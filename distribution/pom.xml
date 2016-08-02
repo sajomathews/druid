@@ -73,6 +73,8 @@
                                 <argument>-h</argument>
                                 <argument>org.apache.hadoop:hadoop-client:${hadoop.compile.version}</argument>
                                 <argument>-c</argument>
+                                <argument>io.druid.extensions.contrib:weighted-hyperunique</argument>
+                                <argument>-c</argument>
                                 <argument>io.druid.extensions:druid-avro-extensions</argument>
                                 <argument>-c</argument>
                                 <argument>io.druid.extensions:druid-examples</argument>
