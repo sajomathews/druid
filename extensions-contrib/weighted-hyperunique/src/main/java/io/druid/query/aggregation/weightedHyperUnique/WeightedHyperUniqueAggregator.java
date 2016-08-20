@@ -2,8 +2,10 @@ package io.druid.query.aggregation.weightedHyperUnique;
 
 import com.google.common.collect.Ordering;
 import com.google.common.primitives.Doubles;
+import com.google.common.primitives.Floats;
 import io.druid.query.aggregation.Aggregator;
 import io.druid.segment.FloatColumnSelector;
+import io.druid.segment.ObjectColumnSelector;
 
 import javax.annotation.Nullable;
 import java.util.Comparator;
@@ -16,30 +18,30 @@ public class WeightedHyperUniqueAggregator implements Aggregator {
     public static final Comparator COMPARATOR = new Ordering() {
         @Override
         public int compare(@Nullable Object o, @Nullable Object t1) {
-            return Doubles.compare(((Number) o).doubleValue(), ((Number) t1).doubleValue());
+            return Floats.compare(((WeightedHyperUnique) o).getValue(), ((WeightedHyperUnique) t1).getValue());
         }
     };
 
-    private final FloatColumnSelector selector;
+    private final ObjectColumnSelector<WeightedHyperUnique> selector;
     private final String name;
 
-    private double sum;
+    private WeightedHyperUnique sum;
 
-    public WeightedHyperUniqueAggregator(String name, FloatColumnSelector floatColumnSelector) {
+    public WeightedHyperUniqueAggregator(String name, ObjectColumnSelector<WeightedHyperUnique> columnSelector) {
         this.name = name;
-        this.selector = floatColumnSelector;
+        this.selector = columnSelector;
 
         reset();
     }
 
     @Override
     public void aggregate() {
-        sum += selector.get();
+        sum.fold(selector.get());
     }
 
     @Override
     public void reset() {
-        sum = 0;
+        sum = new WeightedHyperUnique(0);
     }
 
     @Override
@@ -49,7 +51,7 @@ public class WeightedHyperUniqueAggregator implements Aggregator {
 
     @Override
     public float getFloat() {
-        return (float) sum;
+        return sum.getValue();
     }
 
     @Override
@@ -67,7 +69,14 @@ public class WeightedHyperUniqueAggregator implements Aggregator {
         throw new UnsupportedOperationException("Weighted Unique Aggregator does not support getLong()");
     }
 
-    public static double combine(Object lhs, Object rhs) {
-        return ((Number) lhs).doubleValue() + ((Number) rhs).doubleValue();
+    public static WeightedHyperUnique combine(Object lhs, Object rhs) {
+        if (lhs.getClass() != WeightedHyperUnique.class || rhs.getClass() != WeightedHyperUnique.class){
+            throw new UnsupportedOperationException("Can only combine weighted hyper uniques");
+        }
+
+        WeightedHyperUnique w1 = (WeightedHyperUnique)lhs;
+        WeightedHyperUnique w2 = (WeightedHyperUnique)rhs;
+
+        return w1.fold(w2);
     }
 }

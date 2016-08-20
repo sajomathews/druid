@@ -2,14 +2,17 @@ package io.druid.query.aggregation.weightedHyperUnique;
 
 import com.fasterxml.jackson.annotation.JsonTypeName;
 import com.google.common.base.Preconditions;
+import com.metamx.common.IAE;
 import com.metamx.common.StringUtils;
 import io.druid.query.aggregation.Aggregator;
 import io.druid.query.aggregation.AggregatorFactory;
+import io.druid.query.aggregation.AggregatorFactoryNotMergeableException;
 import io.druid.query.aggregation.BufferAggregator;
 import io.druid.segment.ColumnSelectorFactory;
 import com.metamx.common.logger.Logger;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import io.druid.segment.ObjectColumnSelector;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
@@ -44,12 +47,95 @@ public class WeightedHyperUniqueAggregatorFactory extends AggregatorFactory{
 
     @Override
     public Aggregator factorize(ColumnSelectorFactory metricFactory) {
-        return new WeightedHyperUniqueAggregator(name, metricFactory.makeFloatColumnSelector(fieldName));
+        final ObjectColumnSelector selector = metricFactory.makeObjectColumnSelector(fieldName);
+
+        if (selector == null){
+            ObjectColumnSelector nullSelector = new ObjectColumnSelector<WeightedHyperUnique>() {
+                @Override
+                public Class<WeightedHyperUnique> classOfObject() {
+                    return WeightedHyperUnique.class;
+                }
+
+                @Override
+                public WeightedHyperUnique get() {
+                    return new WeightedHyperUnique(0);
+                }
+            };
+            return new WeightedHyperUniqueAggregator(name, nullSelector);
+        }
+
+        final Class cls = selector.classOfObject();
+        if(cls.equals(WeightedHyperUnique.class) || WeightedHyperUnique.class.isAssignableFrom(cls)){
+            return new WeightedHyperUniqueAggregator(name, selector);
+        }
+        else if(cls.equals(Long.TYPE) || Long.TYPE.isAssignableFrom(cls)){
+            ObjectColumnSelector<WeightedHyperUnique> wrapSelector = new ObjectColumnSelector<WeightedHyperUnique>() {
+                @Override
+                public Class<WeightedHyperUnique> classOfObject() {
+                    return WeightedHyperUnique.class;
+                }
+
+                @Override
+                public WeightedHyperUnique get() {
+                    return new WeightedHyperUnique((Long)selector.get());
+                }
+            };
+            return new WeightedHyperUniqueAggregator(name, wrapSelector);
+        }
+        else{
+            throw new IAE(
+                    "Incompatible type for metric[%s], expected a WeightedHyperUnique, got a %s",
+                    fieldName,
+                    cls
+            );
+        }
     }
 
     @Override
     public BufferAggregator factorizeBuffered(ColumnSelectorFactory metricFactory) {
-        return new WeightedHyperUniqueBufferedAggregator(metricFactory.makeFloatColumnSelector(fieldName));
+        final ObjectColumnSelector selector = metricFactory.makeObjectColumnSelector(fieldName);
+
+        if(selector == null){
+            ObjectColumnSelector<WeightedHyperUnique> nullSelector = new ObjectColumnSelector<WeightedHyperUnique>() {
+                @Override
+                public Class<WeightedHyperUnique> classOfObject() {
+                    return WeightedHyperUnique.class;
+                }
+
+                @Override
+                public WeightedHyperUnique get() {
+                    return new WeightedHyperUnique(0);
+                }
+            };
+            return new WeightedHyperUniqueBufferedAggregator(nullSelector);
+        }
+
+        final Class cls = selector.classOfObject();
+
+        if(cls.equals(WeightedHyperUnique.class) || WeightedHyperUnique.class.isAssignableFrom(cls)){
+            return new WeightedHyperUniqueBufferedAggregator(selector);
+        }
+        else if(cls.equals(Long.TYPE) || Long.TYPE.isAssignableFrom(cls)){
+            ObjectColumnSelector<WeightedHyperUnique> wrapSelector = new ObjectColumnSelector<WeightedHyperUnique>(){
+                @Override
+                public Class<WeightedHyperUnique> classOfObject() {
+                    return WeightedHyperUnique.class;
+                }
+
+                @Override
+                public WeightedHyperUnique get() {
+                    return new WeightedHyperUnique((Long)selector.get());
+                }
+            };
+            return new WeightedHyperUniqueBufferedAggregator(wrapSelector);
+        }
+        else{
+            throw new IAE(
+                    "Incompatible type for metric[%s], expected a WeightedHyperUnique, got a %s",
+                    fieldName,
+                    cls
+            );
+        }
     }
 
     @Override
@@ -84,6 +170,20 @@ public class WeightedHyperUniqueAggregatorFactory extends AggregatorFactory{
         return new WeightedHyperUniqueAggregatorFactory(name, name);
     }
 
+    @Override
+    public AggregatorFactory getMergingFactory(AggregatorFactory other) throws AggregatorFactoryNotMergeableException
+      {
+        if (other.getName().equals(this.getName()) && other instanceof WeightedHyperUniqueAggregatorFactory) {
+          WeightedHyperUniqueAggregatorFactory castedOther = (WeightedHyperUniqueAggregatorFactory) other;
+
+          return new WeightedHyperUniqueAggregatorFactory(
+              name,
+              name
+          );
+        } else {
+          throw new AggregatorFactoryNotMergeableException(this, other);
+        }
+      }
     /**
      * Gets a list of all columns that this AggregatorFactory will scan
      *
@@ -103,10 +203,16 @@ public class WeightedHyperUniqueAggregatorFactory extends AggregatorFactory{
      */
     @Override
     public Object deserialize(Object object) {
-        if (object instanceof String){
-            return parseDouble((String) object);
-        }
-        return object;
+       if(object instanceof byte[]) {
+           final WeightedHyperUnique w = WeightedHyperUnique.fromBytes((byte[]) object);
+           return w;
+       }
+       else {
+           throw new IAE(
+                   "Don't know how to deserialze %s to WeightedHyperUnique",
+                   object.getClass()
+           );
+       }
     }
 
     /**
@@ -118,7 +224,7 @@ public class WeightedHyperUniqueAggregatorFactory extends AggregatorFactory{
      */
     @Override
     public Object finalizeComputation(Object object) {
-        return object;
+        return ((WeightedHyperUnique)(object)).getValue();
     }
 
     @Override
@@ -166,5 +272,40 @@ public class WeightedHyperUniqueAggregatorFactory extends AggregatorFactory{
     @Override
     public Object getAggregatorStartValue() {
         return 0;
+    }
+
+    @Override
+    public boolean equals(Object o){
+        if (this == o){
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()){
+            return false;
+        }
+
+        WeightedHyperUniqueAggregatorFactory that = (WeightedHyperUniqueAggregatorFactory) o;
+
+        if (fieldName != null ? !fieldName.equals(that.fieldName) : that.fieldName != null) {
+            return false;
+        }
+        if (name != null ? !name.equals(that.name) : that.name != null) {
+            return false;
+        }
+        return true;
+    }
+
+    @Override
+    public int hashCode(){
+        int result = name != null ? name.hashCode():0;
+        result = 31*result + fieldName != null ? fieldName.hashCode():0;
+        return result;
+    }
+
+    @Override
+    public String toString(){
+        return "WeightedHyperUniqueAggregatorFactory{"+
+                "name="+name+
+                ", fieldname="+fieldName+
+                "}";
     }
 }

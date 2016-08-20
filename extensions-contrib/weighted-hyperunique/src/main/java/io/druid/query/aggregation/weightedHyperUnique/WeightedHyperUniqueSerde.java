@@ -1,6 +1,7 @@
 package io.druid.query.aggregation.weightedHyperUnique;
 
 import com.google.common.collect.Ordering;
+import com.metamx.common.logger.Logger;
 import io.druid.data.input.InputRow;
 import io.druid.segment.column.ColumnBuilder;
 import io.druid.segment.column.GenericColumn;
@@ -12,16 +13,17 @@ import io.druid.segment.serde.ComplexMetricSerde;
 
 import javax.annotation.Nullable;
 import java.nio.ByteBuffer;
+import java.util.List;
 
 /**
  * Created by sajo on 2/8/16.
  */
 public class WeightedHyperUniqueSerde extends ComplexMetricSerde {
 
-    private static Ordering<Double> comparator = new Ordering<Double>() {
+    private static Ordering<WeightedHyperUnique> comparator = new Ordering<WeightedHyperUnique>() {
         @Override
-        public int compare(@Nullable Double aDouble, @Nullable Double t1) {
-            return WeightedHyperUniqueAggregator.COMPARATOR.compare(aDouble, t1);
+        public int compare(@Nullable WeightedHyperUnique w1, @Nullable WeightedHyperUnique t1) {
+            return WeightedHyperUniqueAggregator.COMPARATOR.compare(w1, t1);
         }
     };
     @Override
@@ -47,15 +49,33 @@ public class WeightedHyperUniqueSerde extends ComplexMetricSerde {
     @Override
     public ComplexMetricExtractor getExtractor(){
         return new ComplexMetricExtractor() {
+
+            private final Logger log = new Logger("W_SERDE");
             @Override
-            public Class<Double> extractedClass() {
-                return Double.class;
+            public Class<WeightedHyperUnique> extractedClass() {
+                return WeightedHyperUnique.class;
             }
 
             @Override
             public Object extractValue(InputRow inputRow, String metricName) {
-                double data = inputRow.getFloatMetric(metricName);
-                return data;
+                Object raw_value = inputRow.getRaw(metricName);
+
+                if (raw_value instanceof WeightedHyperUnique){
+                    return (WeightedHyperUnique) raw_value;
+                }
+                else {
+                    WeightedHyperUnique sum = new WeightedHyperUnique(0);
+                    List<String> dimValues = inputRow.getDimension(metricName);
+                    if (dimValues == null){
+                        return sum;
+                    }
+                    else {
+                        for (String value: dimValues){
+                                sum.offer((float) Double.parseDouble(value));
+                        }
+                        return sum;
+                    }
+                }
             }
         };
     }
@@ -72,29 +92,29 @@ public class WeightedHyperUniqueSerde extends ComplexMetricSerde {
      */
     @Override
     public ObjectStrategy getObjectStrategy() {
-        return new ObjectStrategy<Double>() {
+        return new ObjectStrategy<WeightedHyperUnique>() {
             @Override
-            public Class getClazz() {
-                return Double.class;
+            public Class<? extends WeightedHyperUnique> getClazz() {
+                return WeightedHyperUnique.class;
             }
 
             @Override
-            public Double fromByteBuffer(ByteBuffer buffer, int numBytes) {
+            public WeightedHyperUnique fromByteBuffer(ByteBuffer buffer, int numBytes) {
                 final ByteBuffer readOnlyBuffer = buffer.asReadOnlyBuffer();
                 readOnlyBuffer.limit(readOnlyBuffer.position() + numBytes);
-                return readOnlyBuffer.getDouble();
+                byte[] b = new byte[readOnlyBuffer.remaining()];
+                readOnlyBuffer.get(b);
+                return WeightedHyperUnique.fromBytes(b);
             }
 
             @Override
-            public byte[] toBytes(Double val) {
-                byte[] bytes = new byte[Double.SIZE];
-                ByteBuffer.wrap(bytes).putDouble(val);
-                return bytes;
+            public byte[] toBytes(WeightedHyperUnique val) {
+                return val.toBytes();
             }
 
             @Override
-            public int compare(Double o1, Double o2) {
-                return comparator.compare(o1, o2);
+            public int compare(WeightedHyperUnique w1, WeightedHyperUnique w2) {
+                return comparator.compare(w1, w2);
             }
         };
     }

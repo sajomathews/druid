@@ -2,6 +2,7 @@ package io.druid.query.aggregation.weightedHyperUnique;
 
 import io.druid.query.aggregation.BufferAggregator;
 import io.druid.segment.FloatColumnSelector;
+import io.druid.segment.ObjectColumnSelector;
 
 import java.nio.ByteBuffer;
 
@@ -10,31 +11,19 @@ import java.nio.ByteBuffer;
  */
 public class WeightedHyperUniqueBufferedAggregator implements BufferAggregator {
 
-    private final FloatColumnSelector selector;
+    private final ObjectColumnSelector<WeightedHyperUnique> selector;
 
-    public WeightedHyperUniqueBufferedAggregator(FloatColumnSelector floatColumnSelector) {
-        this.selector = floatColumnSelector;
+    public WeightedHyperUniqueBufferedAggregator(ObjectColumnSelector objectColumnSelector) {
+        this.selector = objectColumnSelector;
     }
 
-    /**
-     * Initializes the buffer location
-     * <p>
-     * Implementations of this method must initialize the byte buffer at the given position
-     * <p>
-     * <b>Implementations must not change the position, limit or mark of the given buffer</b>
-     * <p>
-     * This method must not exceed the number of bytes returned by {@link AggregatorFactory#getMaxIntermediateSize()}
-     * in the corresponding {@link AggregatorFactory}
-     *
-     * @param buf      byte buffer to initialize
-     * @param position offset within the byte buffer for initialization
-     */
     @Override
     public void init(ByteBuffer buf, int position) {
         ByteBuffer mutationBuffer = buf.duplicate();
         mutationBuffer.position(position);
 
-        mutationBuffer.putDouble(0d);
+        WeightedHyperUnique w = new WeightedHyperUnique(0);
+        w.toByteBuf(mutationBuffer);
     }
 
     /**
@@ -53,10 +42,11 @@ public class WeightedHyperUniqueBufferedAggregator implements BufferAggregator {
         ByteBuffer mutationBuffer = buf.duplicate();
         mutationBuffer.position(position);
 
-        double current = mutationBuffer.getDouble();
+        WeightedHyperUnique current = WeightedHyperUnique.fromByteBuf(mutationBuffer.asReadOnlyBuffer());
+        current.fold((WeightedHyperUnique)selector.get());
 
         mutationBuffer.position(position);
-        mutationBuffer.putDouble(current + selector.get());
+        current.toByteBuf(mutationBuffer);
     }
 
     /**
@@ -72,50 +62,20 @@ public class WeightedHyperUniqueBufferedAggregator implements BufferAggregator {
      */
     @Override
     public Object get(ByteBuffer buf, int position) {
-        ByteBuffer mutationBuffer = buf.duplicate();
+        ByteBuffer mutationBuffer = buf.asReadOnlyBuffer();
         mutationBuffer.position(position);
 
-        return mutationBuffer.getDouble();
+        return WeightedHyperUnique.fromByteBuf(mutationBuffer);
     }
 
-    /**
-     * Returns the float representation of the given aggregate byte array
-     * <p>
-     * Converts the given byte buffer representation into the intermediate aggregate value.
-     * <p>
-     * <b>Implementations must not change the position, limit or mark of the given buffer</b>
-     * <p>
-     * Implementations are only required to support this method if they are aggregations which
-     * have an {@link AggregatorFactory#getTypeName()} of "float".
-     * If unimplemented, throwing an {@link UnsupportedOperationException} is common and recommended.
-     *
-     * @param buf      byte buffer storing the byte array representation of the aggregate
-     * @param position offset within the byte buffer at which the aggregate value is stored
-     * @return the float representation of the aggregate
-     */
     @Override
     public float getFloat(ByteBuffer buf, int position) {
-        ByteBuffer mutationBuffer = buf.duplicate();
+        ByteBuffer mutationBuffer = buf.asReadOnlyBuffer();
         mutationBuffer.position(position);
 
-        return (float) mutationBuffer.getDouble();
+        return WeightedHyperUnique.fromByteBuf(mutationBuffer).getValue();
     }
 
-    /**
-     * Returns the long representation of the given aggregate byte array
-     * <p>
-     * Converts the given byte buffer representation into the intermediate aggregate value.
-     * <p>
-     * <b>Implementations must not change the position, limit or mark of the given buffer</b>
-     * <p>
-     * Implementations are only required to support this method if they are aggregations which
-     * have an {@link AggregatorFactory#getTypeName()} of "long".
-     * If unimplemented, throwing an {@link UnsupportedOperationException} is common and recommended.
-     *
-     * @param buf      byte buffer storing the byte array representation of the aggregate
-     * @param position offset within the byte buffer at which the aggregate value is stored
-     * @return the long representation of the aggregate
-     */
     @Override
     public long getLong(ByteBuffer buf, int position) {
         throw new UnsupportedOperationException("WeightedUniqueAggregator does not support getLong()");
