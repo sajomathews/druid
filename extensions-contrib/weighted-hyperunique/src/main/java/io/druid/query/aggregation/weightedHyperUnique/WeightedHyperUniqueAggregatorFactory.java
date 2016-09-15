@@ -12,7 +12,9 @@ import io.druid.segment.ColumnSelectorFactory;
 import com.metamx.common.logger.Logger;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import io.druid.segment.FloatColumnSelector;
 import io.druid.segment.ObjectColumnSelector;
+import io.druid.segment.column.FloatColumn;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
@@ -30,19 +32,22 @@ public class WeightedHyperUniqueAggregatorFactory extends AggregatorFactory{
     private static final byte CACHE_TYPE_ID = 'Z';
     private final String name;
     private final String fieldName;
+    private final Integer weight;
 
     @JsonCreator
     public WeightedHyperUniqueAggregatorFactory(
             @JsonProperty("name") String name,
-            @JsonProperty("fieldName") String fieldName
+            @JsonProperty("fieldName") String fieldName,
+            @JsonProperty("weight") Integer weight
     ){
         Preconditions.checkNotNull(name);
         Preconditions.checkNotNull(fieldName);
-        log.debug(name);
-        log.debug(fieldName);
 
         this.name = name;
         this.fieldName = fieldName;
+        this.weight = weight == null ? 1 : weight;
+
+        Preconditions.checkArgument(this.weight > 0, "Weight cannot be negative");
     }
 
     @Override
@@ -50,41 +55,29 @@ public class WeightedHyperUniqueAggregatorFactory extends AggregatorFactory{
         final ObjectColumnSelector selector = metricFactory.makeObjectColumnSelector(fieldName);
 
         if (selector == null){
-            ObjectColumnSelector nullSelector = new ObjectColumnSelector<WeightedHyperUnique>() {
-                @Override
-                public Class<WeightedHyperUnique> classOfObject() {
-                    return WeightedHyperUnique.class;
-                }
-
-                @Override
-                public WeightedHyperUnique get() {
-                    return new WeightedHyperUnique(0);
-                }
-            };
-            return new WeightedHyperUniqueAggregator(name, nullSelector);
+            throw new IAE(
+                    "field selector for metric[%s] was null",
+                    fieldName
+            );
         }
 
         final Class cls = selector.classOfObject();
         if(cls.equals(WeightedHyperUnique.class) || WeightedHyperUnique.class.isAssignableFrom(cls)){
-            return new WeightedHyperUniqueAggregator(name, selector);
+            throw new IAE(
+                    "Aggregation called for class %s (not supported). Aggregator: %s, Fieldname: %s",
+                    cls,
+                    name,
+                    fieldName
+            );
+            //TODO: We should return an aggregator that can combine already weighted data here
         }
-        else if(cls.equals(Long.TYPE) || Long.TYPE.isAssignableFrom(cls)){
-            ObjectColumnSelector<WeightedHyperUnique> wrapSelector = new ObjectColumnSelector<WeightedHyperUnique>() {
-                @Override
-                public Class<WeightedHyperUnique> classOfObject() {
-                    return WeightedHyperUnique.class;
-                }
-
-                @Override
-                public WeightedHyperUnique get() {
-                    return new WeightedHyperUnique((Long)selector.get());
-                }
-            };
-            return new WeightedHyperUniqueAggregator(name, wrapSelector);
+        else if(cls.equals(Float.TYPE) || Float.TYPE.isAssignableFrom(cls)){
+            final FloatColumnSelector rawSelector = metricFactory.makeFloatColumnSelector(fieldName);
+            return new WeightedHyperUniqueAggregator(name, rawSelector, weight);
         }
         else{
             throw new IAE(
-                    "Incompatible type for metric[%s], expected a WeightedHyperUnique, got a %s",
+                    "Incompatible type for metric[%s], expected a Float, got a %s",
                     fieldName,
                     cls
             );
@@ -96,42 +89,27 @@ public class WeightedHyperUniqueAggregatorFactory extends AggregatorFactory{
         final ObjectColumnSelector selector = metricFactory.makeObjectColumnSelector(fieldName);
 
         if(selector == null){
-            ObjectColumnSelector<WeightedHyperUnique> nullSelector = new ObjectColumnSelector<WeightedHyperUnique>() {
-                @Override
-                public Class<WeightedHyperUnique> classOfObject() {
-                    return WeightedHyperUnique.class;
-                }
-
-                @Override
-                public WeightedHyperUnique get() {
-                    return new WeightedHyperUnique(0);
-                }
-            };
-            return new WeightedHyperUniqueBufferedAggregator(nullSelector);
+            throw new IAE(
+                    "field selector for metric[%s] was null in factorizeBuffered",
+                    fieldName
+            );
         }
 
         final Class cls = selector.classOfObject();
 
         if(cls.equals(WeightedHyperUnique.class) || WeightedHyperUnique.class.isAssignableFrom(cls)){
-            return new WeightedHyperUniqueBufferedAggregator(selector);
+            throw new IAE(
+                    "preaggregated WeightedHyperUnique is not supported yet"
+            );
+            //TODO: Should return a combining Aggregator here
         }
-        else if(cls.equals(Long.TYPE) || Long.TYPE.isAssignableFrom(cls)){
-            ObjectColumnSelector<WeightedHyperUnique> wrapSelector = new ObjectColumnSelector<WeightedHyperUnique>(){
-                @Override
-                public Class<WeightedHyperUnique> classOfObject() {
-                    return WeightedHyperUnique.class;
-                }
-
-                @Override
-                public WeightedHyperUnique get() {
-                    return new WeightedHyperUnique((Long)selector.get());
-                }
-            };
-            return new WeightedHyperUniqueBufferedAggregator(wrapSelector);
+        else if(cls.equals(Float.TYPE) || Float.TYPE.isAssignableFrom(cls)){
+            final FloatColumnSelector rawSelector = metricFactory.makeFloatColumnSelector(fieldName);
+            return new WeightedHyperUniqueBufferedAggregator(rawSelector, weight);
         }
         else{
             throw new IAE(
-                    "Incompatible type for metric[%s], expected a WeightedHyperUnique, got a %s",
+                    "Incompatible type for metric[%s], expected a Float, got a %s",
                     fieldName,
                     cls
             );
@@ -167,7 +145,7 @@ public class WeightedHyperUniqueAggregatorFactory extends AggregatorFactory{
      */
     @Override
     public AggregatorFactory getCombiningFactory() {
-        return new WeightedHyperUniqueAggregatorFactory(name, name);
+        return new WeightedHyperUniqueAggregatorFactory(name, name, 1);
     }
 
     @Override
@@ -178,7 +156,8 @@ public class WeightedHyperUniqueAggregatorFactory extends AggregatorFactory{
 
           return new WeightedHyperUniqueAggregatorFactory(
               name,
-              name
+              name,
+              1
           );
         } else {
           throw new AggregatorFactoryNotMergeableException(this, other);
@@ -191,7 +170,8 @@ public class WeightedHyperUniqueAggregatorFactory extends AggregatorFactory{
      */
     @Override
     public List<AggregatorFactory> getRequiredColumns() {
-        return Arrays.<AggregatorFactory>asList(new WeightedHyperUniqueAggregatorFactory(fieldName, fieldName));
+        //TODO: Figure out when this is called
+        return Arrays.<AggregatorFactory>asList(new WeightedHyperUniqueAggregatorFactory(fieldName, fieldName, weight));
     }
 
     /**
@@ -236,6 +216,11 @@ public class WeightedHyperUniqueAggregatorFactory extends AggregatorFactory{
     @JsonProperty
     public String getFieldName() {
         return fieldName;
+    }
+
+    @JsonProperty
+    public Integer getWeight(){
+        return weight;
     }
 
     @Override

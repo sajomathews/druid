@@ -3,6 +3,7 @@ package io.druid.query.aggregation.weightedHyperUnique;
 import io.druid.query.aggregation.BufferAggregator;
 import io.druid.segment.FloatColumnSelector;
 import io.druid.segment.ObjectColumnSelector;
+import io.druid.segment.column.FloatColumn;
 
 import java.nio.ByteBuffer;
 
@@ -11,10 +12,12 @@ import java.nio.ByteBuffer;
  */
 public class WeightedHyperUniqueBufferedAggregator implements BufferAggregator {
 
-    private final ObjectColumnSelector<WeightedHyperUnique> selector;
+    private final FloatColumnSelector selector;
+    private final Integer weight;
 
-    public WeightedHyperUniqueBufferedAggregator(ObjectColumnSelector objectColumnSelector) {
+    public WeightedHyperUniqueBufferedAggregator(FloatColumnSelector objectColumnSelector, Integer weight) {
         this.selector = objectColumnSelector;
+        this.weight = weight;
     }
 
     @Override
@@ -43,7 +46,7 @@ public class WeightedHyperUniqueBufferedAggregator implements BufferAggregator {
         mutationBuffer.position(position);
 
         WeightedHyperUnique current = WeightedHyperUnique.fromByteBuf(mutationBuffer.asReadOnlyBuffer());
-        current.fold((WeightedHyperUnique)selector.get());
+        current.offer(weight * selector.get());
 
         mutationBuffer.position(position);
         current.toByteBuf(mutationBuffer);

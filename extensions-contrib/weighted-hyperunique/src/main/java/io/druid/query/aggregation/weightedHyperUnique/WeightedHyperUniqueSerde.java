@@ -1,6 +1,7 @@
 package io.druid.query.aggregation.weightedHyperUnique;
 
 import com.google.common.collect.Ordering;
+import com.metamx.common.IAE;
 import com.metamx.common.logger.Logger;
 import io.druid.data.input.InputRow;
 import io.druid.segment.column.ColumnBuilder;
@@ -71,7 +72,10 @@ public class WeightedHyperUniqueSerde extends ComplexMetricSerde {
                     }
                     else {
                         for (String value: dimValues){
-                                sum.offer((float) Double.parseDouble(value));
+                            sum.offer((float) Double.parseDouble(value));
+                            throw new IAE(
+                                    "Stack trace should begin here"
+                            );
                         }
                         return sum;
                     }

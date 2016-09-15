@@ -6,6 +6,7 @@ import com.google.common.primitives.Floats;
 import io.druid.query.aggregation.Aggregator;
 import io.druid.segment.FloatColumnSelector;
 import io.druid.segment.ObjectColumnSelector;
+import io.druid.timeline.partition.IntegerPartitionChunk;
 
 import javax.annotation.Nullable;
 import java.util.Comparator;
@@ -22,21 +23,23 @@ public class WeightedHyperUniqueAggregator implements Aggregator {
         }
     };
 
-    private final ObjectColumnSelector<WeightedHyperUnique> selector;
+    private final FloatColumnSelector selector;
     private final String name;
+    private final Integer weight;
 
     private WeightedHyperUnique sum;
 
-    public WeightedHyperUniqueAggregator(String name, ObjectColumnSelector<WeightedHyperUnique> columnSelector) {
+    public WeightedHyperUniqueAggregator(String name, FloatColumnSelector columnSelector, Integer weight) {
         this.name = name;
         this.selector = columnSelector;
+        this.weight = weight;
 
         reset();
     }
 
     @Override
     public void aggregate() {
-        sum.fold(selector.get());
+        sum.offer(weight * selector.get());
     }
 
     @Override
