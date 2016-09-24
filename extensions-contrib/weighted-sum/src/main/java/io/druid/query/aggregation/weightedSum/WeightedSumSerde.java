@@ -78,7 +78,7 @@ public class WeightedSumSerde extends ComplexMetricSerde {
                     else {
                         log.error("Getting raw values");
                         for (String value: dimValues){
-                            WeightedDuration duration = WeightedDuration.fromPackedIntegerString(value);
+                            WeightedDuration duration = WeightedDuration.fromJson(value);
                             sum.offer((float) (duration.getWeight() * duration.getDuration()));
                         }
                         return sum;
