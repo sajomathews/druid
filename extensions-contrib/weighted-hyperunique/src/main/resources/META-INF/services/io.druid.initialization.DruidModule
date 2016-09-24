@@ -1,1 +1,1 @@
-io.druid.query.aggregation.weightedHyperUnique.WeightedSumDruidModule
+io.druid.query.aggregation.weightedHyperUnique.WeightedHyperUniqueDruidModule

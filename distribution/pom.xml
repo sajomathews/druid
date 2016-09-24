@@ -75,6 +75,8 @@
                                 <argument>-c</argument>
                                 <argument>io.druid.extensions.contrib:weighted-hyperunique</argument>
                                 <argument>-c</argument>
+                                <argument>io.druid.extensions.contrib:weighted-sum</argument>
+                                <argument>-c</argument>
                                 <argument>io.druid.extensions:druid-avro-extensions</argument>
                                 <argument>-c</argument>
                                 <argument>io.druid.extensions:druid-examples</argument>
