@@ -88,14 +88,13 @@ public class WeightedSumAggregatorFactory extends AggregatorFactory{
         final Class cls = selector.classOfObject();
 
         if(cls.equals(WeightedSum.class) || WeightedSum.class.isAssignableFrom(cls)){
-            throw new IAE(
-                    "preaggregated WeightedSum is not supported yet"
-            );
-            //TODO: Should return a combining Aggregator here
+            final ObjectColumnSelector<WeightedSum> rawSelector = metricFactory.makeObjectColumnSelector(fieldName);
+            return new WeightedSumBufferedAggregator(rawSelector);
         }
         else if(cls.equals(Float.TYPE) || Float.TYPE.isAssignableFrom(cls)){
-            final FloatColumnSelector rawSelector = metricFactory.makeFloatColumnSelector(fieldName);
-            return new WeightedSumBufferedAggregator(rawSelector, 1);
+            throw new IAE(
+                    "WeightedSum does not support float types"
+            );
         }
         else{
             throw new IAE(

@@ -1,7 +1,7 @@
 package io.druid.query.aggregation.weightedSum;
 
 import io.druid.query.aggregation.BufferAggregator;
-import io.druid.segment.FloatColumnSelector;
+import io.druid.segment.ObjectColumnSelector;
 
 import java.nio.ByteBuffer;
 
@@ -10,12 +10,10 @@ import java.nio.ByteBuffer;
  */
 public class WeightedSumBufferedAggregator implements BufferAggregator {
 
-    private final FloatColumnSelector selector;
-    private final Integer weight;
+    private final ObjectColumnSelector<WeightedSum> selector;
 
-    public WeightedSumBufferedAggregator(FloatColumnSelector objectColumnSelector, Integer weight) {
+    public WeightedSumBufferedAggregator(ObjectColumnSelector<WeightedSum> objectColumnSelector) {
         this.selector = objectColumnSelector;
-        this.weight = weight;
     }
 
     @Override
@@ -44,7 +42,7 @@ public class WeightedSumBufferedAggregator implements BufferAggregator {
         mutationBuffer.position(position);
 
         WeightedSum current = WeightedSum.fromByteBuf(mutationBuffer.asReadOnlyBuffer());
-        current.offer(weight * selector.get());
+        current.fold((WeightedSum) selector.get());
 
         mutationBuffer.position(position);
         current.toByteBuf(mutationBuffer);
