@@ -60,7 +60,7 @@ druid.extensions.loadList=["druid-datasketches"]
 
 ### Examples
 
-Assuming, you have a dataset containing (timestamp, product, user_id). You want to answer questions like
+Assuming, you have a dataset containing (timestamp, product, id). You want to answer questions like
 
 How many unique users visited product A?
 How many unique users visited both product A and product B?
@@ -68,7 +68,7 @@ How many unique users visited both product A and product B?
 to answer above questions, you would index your data using following aggregator.
 
 ```json
-{ "type": "thetaSketch", "name": "user_id_sketch", "fieldName": "user_id" }
+{ "type": "thetaSketch", "name": "user_id_sketch", "fieldName": "id" }
 ```
 
 then, sample query for, How many unique users visited product A?

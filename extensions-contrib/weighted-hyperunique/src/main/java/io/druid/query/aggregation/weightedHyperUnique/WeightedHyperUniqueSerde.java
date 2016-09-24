@@ -82,18 +82,15 @@ public class WeightedHyperUniqueSerde extends ComplexMetricSerde {
                     }
 
                     for (String dimensionValue : dimValues) {
-                        //WeightedDuration json = WeightedDuration.fromJson(dimensionValue);
-                        int i = 0;
-                        for (i = 0; i < 50; i++) {
-                            String modifiedDimension = dimensionValue + ":" + i;
+                        WeightedUserId json = WeightedUserId.fromJson(dimensionValue);
+                        int weight = json.getWeight();
+                        String userId = json.getId();
+                        for (int i = 0; i < weight; i++) {
+                            String modifiedDimension = userId + ":" + i;
                             collector.add(
                                     hashFn.hashBytes(StringUtils.toUtf8(modifiedDimension)).asBytes()
                             );
                         }
-
-/*                        collector.add(
-                                hashFn.hashBytes(StringUtils.toUtf8(dimensionValue)).asBytes()
-                        );*/
                     }
                     return collector;
                 }

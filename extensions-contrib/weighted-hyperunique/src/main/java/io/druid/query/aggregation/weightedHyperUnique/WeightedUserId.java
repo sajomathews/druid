@@ -10,30 +10,30 @@ import java.io.IOException;
 /**
  * Created by sajo on 24/9/16.
  */
-public class WeightedDuration {
+public class WeightedUserId {
     private Integer weight;
-    private String user_id;
-    public static Logger log = new Logger(WeightedDuration.class.getName());
+    private String id;
+    public static Logger log = new Logger(WeightedUserId.class.getName());
 
     public Integer getWeight(){
         return weight;
     }
 
-    public String getUser_id() { return user_id; }
+    public String getId() { return id; }
 
     public void setWeight(Integer w){
         this.weight = w;
     }
 
-    public void setUser_id(String user_id){
-        this.user_id = user_id;
+    public void setId(String id){
+        this.id = id;
     }
 
-    public static WeightedDuration fromJson(String json){
+    public static WeightedUserId fromJson(String json){
         ObjectMapper mapper = new ObjectMapper();
         try {
             log.error("json: %s", json);
-            return mapper.readValue(json, WeightedDuration.class);
+            return mapper.readValue(json, WeightedUserId.class);
         } catch (JsonParseException e) {
             e.printStackTrace();
         } catch (JsonMappingException e) {
