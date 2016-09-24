@@ -12,23 +12,21 @@ import java.io.IOException;
  */
 public class WeightedDuration {
     private Integer weight;
-    private Double duration;
-    public static Logger log = new Logger("io.druid.initialization.Initialization");
+    private String user_id;
+    public static Logger log = new Logger(WeightedDuration.class.getName());
 
     public Integer getWeight(){
         return weight;
     }
 
-    public Double getDuration(){
-        return duration;
-    }
+    public String getUser_id() { return user_id; }
 
     public void setWeight(Integer w){
         this.weight = w;
     }
 
-    public void setDuration(Double d){
-        this.duration = d;
+    public void setUser_id(String user_id){
+        this.user_id = user_id;
     }
 
     public static WeightedDuration fromJson(String json){
@@ -44,16 +42,5 @@ public class WeightedDuration {
             e.printStackTrace();
         }
         return null;
-    }
-
-    public static WeightedDuration fromPackedIntegerString(String str){
-        Integer a = ((1<<16) - 1);
-        WeightedDuration duration = new WeightedDuration();
-        Integer packed = Integer.parseInt(str);
-        Integer weight = a & packed;
-        Double dur = 1.0*(packed >> 16);
-        duration.setWeight(weight);
-        duration.setDuration(dur);
-        return duration;
     }
 }
