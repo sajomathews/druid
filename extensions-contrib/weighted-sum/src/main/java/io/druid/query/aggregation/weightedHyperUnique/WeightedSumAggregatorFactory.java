@@ -14,27 +14,24 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.druid.segment.FloatColumnSelector;
 import io.druid.segment.ObjectColumnSelector;
-import io.druid.segment.column.FloatColumn;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 
-import static java.lang.Double.*;
-
 /**
  * Created by sajo on 2/8/16.
  */
 @JsonTypeName("weightedHyperUnique")
-public class WeightedHyperUniqueAggregatorFactory extends AggregatorFactory{
-    private static final Logger log = new Logger(WeightedHyperUniqueAggregatorFactory.class);
+public class WeightedSumAggregatorFactory extends AggregatorFactory{
+    private static final Logger log = new Logger(WeightedSumAggregatorFactory.class);
     private static final byte CACHE_TYPE_ID = 'Z';
     private final String name;
     private final String fieldName;
 
     @JsonCreator
-    public WeightedHyperUniqueAggregatorFactory(
+    public WeightedSumAggregatorFactory(
             @JsonProperty("name") String name,
             @JsonProperty("fieldName") String fieldName
     ){
@@ -57,8 +54,8 @@ public class WeightedHyperUniqueAggregatorFactory extends AggregatorFactory{
         }
 
         final Class cls = selector.classOfObject();
-        if(cls.equals(Object.class) || WeightedHyperUnique.class.isAssignableFrom(cls)){
-            return new WeightedHyperUniqueAggregator(name, selector);
+        if(cls.equals(Object.class) || WeightedSumUnique.class.isAssignableFrom(cls)){
+            return new WeightedSumAggregator(name, selector);
         }
         else if(cls.equals(Float.TYPE) || Float.TYPE.isAssignableFrom(cls)){
             throw new IAE(
@@ -90,15 +87,15 @@ public class WeightedHyperUniqueAggregatorFactory extends AggregatorFactory{
 
         final Class cls = selector.classOfObject();
 
-        if(cls.equals(WeightedHyperUnique.class) || WeightedHyperUnique.class.isAssignableFrom(cls)){
+        if(cls.equals(WeightedSumUnique.class) || WeightedSumUnique.class.isAssignableFrom(cls)){
             throw new IAE(
-                    "preaggregated WeightedHyperUnique is not supported yet"
+                    "preaggregated WeightedSumUnique is not supported yet"
             );
             //TODO: Should return a combining Aggregator here
         }
         else if(cls.equals(Float.TYPE) || Float.TYPE.isAssignableFrom(cls)){
             final FloatColumnSelector rawSelector = metricFactory.makeFloatColumnSelector(fieldName);
-            return new WeightedHyperUniqueBufferedAggregator(rawSelector, 1);
+            return new WeightedSumBufferedAggregator(rawSelector, 1);
         }
         else{
             throw new IAE(
@@ -111,7 +108,7 @@ public class WeightedHyperUniqueAggregatorFactory extends AggregatorFactory{
 
     @Override
     public Comparator getComparator() {
-        return WeightedHyperUniqueAggregator.COMPARATOR;
+        return WeightedSumAggregator.COMPARATOR;
     }
 
     /**
@@ -126,7 +123,7 @@ public class WeightedHyperUniqueAggregatorFactory extends AggregatorFactory{
      */
     @Override
     public Object combine(Object lhs, Object rhs) {
-        return WeightedHyperUniqueAggregator.combine(lhs, rhs);
+        return WeightedSumAggregator.combine(lhs, rhs);
     }
 
     /**
@@ -139,16 +136,16 @@ public class WeightedHyperUniqueAggregatorFactory extends AggregatorFactory{
     @Override
     public AggregatorFactory getCombiningFactory() {
         log.error("get combining factory");
-        return new WeightedHyperUniqueAggregatorFactory(name, name);
+        return new WeightedSumAggregatorFactory(name, name);
     }
 
     @Override
     public AggregatorFactory getMergingFactory(AggregatorFactory other) throws AggregatorFactoryNotMergeableException
       {
-        if (other.getName().equals(this.getName()) && other instanceof WeightedHyperUniqueAggregatorFactory) {
-          WeightedHyperUniqueAggregatorFactory castedOther = (WeightedHyperUniqueAggregatorFactory) other;
+        if (other.getName().equals(this.getName()) && other instanceof WeightedSumAggregatorFactory) {
+          WeightedSumAggregatorFactory castedOther = (WeightedSumAggregatorFactory) other;
 
-          return new WeightedHyperUniqueAggregatorFactory(
+          return new WeightedSumAggregatorFactory(
               name,
               name
           );
@@ -164,7 +161,7 @@ public class WeightedHyperUniqueAggregatorFactory extends AggregatorFactory{
     @Override
     public List<AggregatorFactory> getRequiredColumns() {
         //TODO: Figure out when this is called
-        return Arrays.<AggregatorFactory>asList(new WeightedHyperUniqueAggregatorFactory(fieldName, fieldName));
+        return Arrays.<AggregatorFactory>asList(new WeightedSumAggregatorFactory(fieldName, fieldName));
     }
 
     /**
@@ -177,12 +174,12 @@ public class WeightedHyperUniqueAggregatorFactory extends AggregatorFactory{
     @Override
     public Object deserialize(Object object) {
        if(object instanceof byte[]) {
-           final WeightedHyperUnique w = WeightedHyperUnique.fromBytes((byte[]) object);
+           final WeightedSumUnique w = WeightedSumUnique.fromBytes((byte[]) object);
            return w;
        }
        else {
            throw new IAE(
-                   "Don't know how to deserialze %s to WeightedHyperUnique",
+                   "Don't know how to deserialze %s to WeightedSumUnique",
                    object.getClass()
            );
        }
@@ -197,7 +194,7 @@ public class WeightedHyperUniqueAggregatorFactory extends AggregatorFactory{
      */
     @Override
     public Object finalizeComputation(Object object) {
-        return ((WeightedHyperUnique)(object)).getValue();
+        return ((WeightedSumUnique)(object)).getValue();
     }
 
     @Override
@@ -256,7 +253,7 @@ public class WeightedHyperUniqueAggregatorFactory extends AggregatorFactory{
             return false;
         }
 
-        WeightedHyperUniqueAggregatorFactory that = (WeightedHyperUniqueAggregatorFactory) o;
+        WeightedSumAggregatorFactory that = (WeightedSumAggregatorFactory) o;
 
         if (fieldName != null ? !fieldName.equals(that.fieldName) : that.fieldName != null) {
             return false;
@@ -276,7 +273,7 @@ public class WeightedHyperUniqueAggregatorFactory extends AggregatorFactory{
 
     @Override
     public String toString(){
-        return "WeightedHyperUniqueAggregatorFactory{"+
+        return "WeightedSumAggregatorFactory{"+
                 "name="+name+
                 ", fieldname="+fieldName+
                 "}";

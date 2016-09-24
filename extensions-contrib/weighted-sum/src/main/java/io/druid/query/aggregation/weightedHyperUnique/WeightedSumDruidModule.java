@@ -1,7 +1,6 @@
 package io.druid.query.aggregation.weightedHyperUnique;
 
 import com.fasterxml.jackson.databind.Module;
-import com.fasterxml.jackson.databind.jsontype.NamedType;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.google.common.collect.ImmutableList;
 import com.google.inject.Binder;
@@ -13,14 +12,14 @@ import java.util.List;
 /**
  * Created by sajo on 2/8/16.
  */
-public class WeightedHyperUniqueDruidModule implements DruidModule{
+public class WeightedSumDruidModule implements DruidModule{
 
     public static final String AGGREGATOR_TYPE = "weightedHyperUnique";
     @Override
     public List<? extends Module> getJacksonModules() {
         return ImmutableList.of(
                 new SimpleModule().registerSubtypes(
-                        WeightedHyperUniqueAggregatorFactory.class
+                        WeightedSumAggregatorFactory.class
                 )
         );
     }
@@ -28,7 +27,7 @@ public class WeightedHyperUniqueDruidModule implements DruidModule{
     @Override
     public void configure(Binder binder) {
         if (ComplexMetrics.getSerdeForType(AGGREGATOR_TYPE) == null) {
-            ComplexMetrics.registerSerde(AGGREGATOR_TYPE, new WeightedHyperUniqueSerde());
+            ComplexMetrics.registerSerde(AGGREGATOR_TYPE, new WeightedSumSerde());
         }
 
     }

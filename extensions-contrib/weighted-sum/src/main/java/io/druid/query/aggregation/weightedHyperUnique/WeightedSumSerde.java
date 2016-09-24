@@ -5,7 +5,6 @@ import com.metamx.common.IAE;
 import com.metamx.common.logger.Logger;
 import io.druid.data.input.InputRow;
 import io.druid.segment.column.ColumnBuilder;
-import io.druid.segment.column.GenericColumn;
 import io.druid.segment.data.GenericIndexed;
 import io.druid.segment.data.ObjectStrategy;
 import io.druid.segment.serde.ComplexColumnPartSupplier;
@@ -20,12 +19,12 @@ import java.util.List;
  * Created by sajo on 2/8/16.
  */
 
-public class WeightedHyperUniqueSerde extends ComplexMetricSerde {
+public class WeightedSumSerde extends ComplexMetricSerde {
 
-    private static Ordering<WeightedHyperUnique> comparator = new Ordering<WeightedHyperUnique>() {
+    private static Ordering<WeightedSumUnique> comparator = new Ordering<WeightedSumUnique>() {
         @Override
-        public int compare(@Nullable WeightedHyperUnique w1, @Nullable WeightedHyperUnique t1) {
-            return WeightedHyperUniqueAggregator.COMPARATOR.compare(w1, t1);
+        public int compare(@Nullable WeightedSumUnique w1, @Nullable WeightedSumUnique t1) {
+            return WeightedSumAggregator.COMPARATOR.compare(w1, t1);
         }
     };
     @Override
@@ -54,8 +53,8 @@ public class WeightedHyperUniqueSerde extends ComplexMetricSerde {
 
             private final Logger log = new Logger("io.druid.initialization.Initialization");
             @Override
-            public Class<WeightedHyperUnique> extractedClass() {
-                return WeightedHyperUnique.class;
+            public Class<WeightedSumUnique> extractedClass() {
+                return WeightedSumUnique.class;
             }
 
             @Override
@@ -64,13 +63,13 @@ public class WeightedHyperUniqueSerde extends ComplexMetricSerde {
 
                 log.error(String.format("input row outside is : %s",inputRow));
 
-                if (raw_value instanceof WeightedHyperUnique){
+                if (raw_value instanceof WeightedSumUnique){
                     log.error(String.format("logged raw value is weighted hyper unique, Metric: %s, Raw Value: %s, Class: %s", metricName, raw_value, raw_value.getClass().getSimpleName()));
                     log.error(String.format("input row is : %s",inputRow));
-                    return (WeightedHyperUnique) raw_value;
+                    return (WeightedSumUnique) raw_value;
                 }
                 else {
-                    WeightedHyperUnique sum = new WeightedHyperUnique(0);
+                    WeightedSumUnique sum = new WeightedSumUnique(0);
                     List<String> dimValues = inputRow.getDimension(metricName);
                     if (dimValues == null){
                         throw new IAE("raw value is null");
@@ -101,28 +100,28 @@ public class WeightedHyperUniqueSerde extends ComplexMetricSerde {
      */
     @Override
     public ObjectStrategy getObjectStrategy() {
-        return new ObjectStrategy<WeightedHyperUnique>() {
+        return new ObjectStrategy<WeightedSumUnique>() {
             @Override
-            public Class<? extends WeightedHyperUnique> getClazz() {
-                return WeightedHyperUnique.class;
+            public Class<? extends WeightedSumUnique> getClazz() {
+                return WeightedSumUnique.class;
             }
 
             @Override
-            public WeightedHyperUnique fromByteBuffer(ByteBuffer buffer, int numBytes) {
+            public WeightedSumUnique fromByteBuffer(ByteBuffer buffer, int numBytes) {
                 final ByteBuffer readOnlyBuffer = buffer.asReadOnlyBuffer();
                 readOnlyBuffer.limit(readOnlyBuffer.position() + numBytes);
                 byte[] b = new byte[readOnlyBuffer.remaining()];
                 readOnlyBuffer.get(b);
-                return WeightedHyperUnique.fromBytes(b);
+                return WeightedSumUnique.fromBytes(b);
             }
 
             @Override
-            public byte[] toBytes(WeightedHyperUnique val) {
+            public byte[] toBytes(WeightedSumUnique val) {
                 return val.toBytes();
             }
 
             @Override
-            public int compare(WeightedHyperUnique w1, WeightedHyperUnique w2) {
+            public int compare(WeightedSumUnique w1, WeightedSumUnique w2) {
                 return comparator.compare(w1, w2);
             }
         };

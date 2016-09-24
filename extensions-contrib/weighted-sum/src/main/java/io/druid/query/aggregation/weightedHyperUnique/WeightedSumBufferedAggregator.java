@@ -2,20 +2,18 @@ package io.druid.query.aggregation.weightedHyperUnique;
 
 import io.druid.query.aggregation.BufferAggregator;
 import io.druid.segment.FloatColumnSelector;
-import io.druid.segment.ObjectColumnSelector;
-import io.druid.segment.column.FloatColumn;
 
 import java.nio.ByteBuffer;
 
 /**
  * Created by sajo on 2/8/16.
  */
-public class WeightedHyperUniqueBufferedAggregator implements BufferAggregator {
+public class WeightedSumBufferedAggregator implements BufferAggregator {
 
     private final FloatColumnSelector selector;
     private final Integer weight;
 
-    public WeightedHyperUniqueBufferedAggregator(FloatColumnSelector objectColumnSelector, Integer weight) {
+    public WeightedSumBufferedAggregator(FloatColumnSelector objectColumnSelector, Integer weight) {
         this.selector = objectColumnSelector;
         this.weight = weight;
     }
@@ -25,7 +23,7 @@ public class WeightedHyperUniqueBufferedAggregator implements BufferAggregator {
         ByteBuffer mutationBuffer = buf.duplicate();
         mutationBuffer.position(position);
 
-        WeightedHyperUnique w = new WeightedHyperUnique(0);
+        WeightedSumUnique w = new WeightedSumUnique(0);
         w.toByteBuf(mutationBuffer);
     }
 
@@ -45,7 +43,7 @@ public class WeightedHyperUniqueBufferedAggregator implements BufferAggregator {
         ByteBuffer mutationBuffer = buf.duplicate();
         mutationBuffer.position(position);
 
-        WeightedHyperUnique current = WeightedHyperUnique.fromByteBuf(mutationBuffer.asReadOnlyBuffer());
+        WeightedSumUnique current = WeightedSumUnique.fromByteBuf(mutationBuffer.asReadOnlyBuffer());
         current.offer(weight * selector.get());
 
         mutationBuffer.position(position);
@@ -68,7 +66,7 @@ public class WeightedHyperUniqueBufferedAggregator implements BufferAggregator {
         ByteBuffer mutationBuffer = buf.asReadOnlyBuffer();
         mutationBuffer.position(position);
 
-        return WeightedHyperUnique.fromByteBuf(mutationBuffer);
+        return WeightedSumUnique.fromByteBuf(mutationBuffer);
     }
 
     @Override
@@ -76,7 +74,7 @@ public class WeightedHyperUniqueBufferedAggregator implements BufferAggregator {
         ByteBuffer mutationBuffer = buf.asReadOnlyBuffer();
         mutationBuffer.position(position);
 
-        return WeightedHyperUnique.fromByteBuf(mutationBuffer).getValue();
+        return WeightedSumUnique.fromByteBuf(mutationBuffer).getValue();
     }
 
     @Override

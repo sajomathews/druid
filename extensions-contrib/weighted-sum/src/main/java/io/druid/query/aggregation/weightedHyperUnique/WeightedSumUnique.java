@@ -20,18 +20,10 @@
 package io.druid.query.aggregation.weightedHyperUnique;
 
 import com.fasterxml.jackson.annotation.JsonValue;
-import com.google.common.base.Preconditions;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.primitives.Floats;
-import com.google.common.primitives.Ints;
-import com.google.common.primitives.Longs;
-import com.google.common.primitives.Shorts;
 
 import java.nio.ByteBuffer;
-import java.util.*;
 
-public class WeightedHyperUnique {
+public class WeightedSumUnique {
     Double value;
 
     @Override
@@ -43,7 +35,7 @@ public class WeightedHyperUnique {
             return false;
         }
 
-        WeightedHyperUnique that = (WeightedHyperUnique) o;
+        WeightedSumUnique that = (WeightedSumUnique) o;
 
         if (Double.compare(that.value, value) != 0) {
             return false;
@@ -58,17 +50,17 @@ public class WeightedHyperUnique {
     }
 
 
-    public WeightedHyperUnique(double value) {
+    public WeightedSumUnique(double value) {
         this.value = value;
     }
 
-    public WeightedHyperUnique() {
+    public WeightedSumUnique() {
         this(0);
     }
 
     @Override
     public String toString() {
-        return "WeightedHyperUnique{" +
+        return "WeightedSumUnique{" +
                 "value=" + value +
                 '}';
     }
@@ -82,7 +74,7 @@ public class WeightedHyperUnique {
         this.value += value;
     }
 
-    public WeightedHyperUnique fold(WeightedHyperUnique h) {
+    public WeightedSumUnique fold(WeightedSumUnique h) {
         this.value += h.value;
         return this;
     }
@@ -103,8 +95,8 @@ public class WeightedHyperUnique {
         buffer.putDouble(value);
     }
 
-    public static WeightedHyperUnique fromByteBuf(ByteBuffer buffer){
-        return new WeightedHyperUnique(buffer.getDouble());
+    public static WeightedSumUnique fromByteBuf(ByteBuffer buffer){
+        return new WeightedSumUnique(buffer.getDouble());
     }
 
 
@@ -131,7 +123,7 @@ public class WeightedHyperUnique {
      * @param bytes byte array to construct an ApproximateHistogram from
      * @return ApproximateHistogram constructed from the given byte array
      */
-    public static WeightedHyperUnique fromBytes(byte[] bytes) {
+    public static WeightedSumUnique fromBytes(byte[] bytes) {
         return fromByteBuf(ByteBuffer.wrap(bytes));
     }
 
