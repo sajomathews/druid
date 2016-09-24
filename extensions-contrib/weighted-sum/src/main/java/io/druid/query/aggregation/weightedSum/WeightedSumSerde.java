@@ -1,4 +1,4 @@
-package io.druid.query.aggregation.weightedHyperUnique;
+package io.druid.query.aggregation.weightedSum;
 
 import com.google.common.collect.Ordering;
 import com.metamx.common.IAE;
@@ -21,15 +21,15 @@ import java.util.List;
 
 public class WeightedSumSerde extends ComplexMetricSerde {
 
-    private static Ordering<WeightedSumUnique> comparator = new Ordering<WeightedSumUnique>() {
+    private static Ordering<WeightedSum> comparator = new Ordering<WeightedSum>() {
         @Override
-        public int compare(@Nullable WeightedSumUnique w1, @Nullable WeightedSumUnique t1) {
+        public int compare(@Nullable WeightedSum w1, @Nullable WeightedSum t1) {
             return WeightedSumAggregator.COMPARATOR.compare(w1, t1);
         }
     };
     @Override
     public String getTypeName() {
-        return "weightedHyperUnique";
+        return "weightedSum";
     }
 
 
@@ -53,8 +53,8 @@ public class WeightedSumSerde extends ComplexMetricSerde {
 
             private final Logger log = new Logger("io.druid.initialization.Initialization");
             @Override
-            public Class<WeightedSumUnique> extractedClass() {
-                return WeightedSumUnique.class;
+            public Class<WeightedSum> extractedClass() {
+                return WeightedSum.class;
             }
 
             @Override
@@ -63,13 +63,13 @@ public class WeightedSumSerde extends ComplexMetricSerde {
 
                 log.error(String.format("input row outside is : %s",inputRow));
 
-                if (raw_value instanceof WeightedSumUnique){
-                    log.error(String.format("logged raw value is weighted hyper unique, Metric: %s, Raw Value: %s, Class: %s", metricName, raw_value, raw_value.getClass().getSimpleName()));
+                if (raw_value instanceof WeightedSum){
+                    log.error(String.format("logged raw value is weighted sum, Metric: %s, Raw Value: %s, Class: %s", metricName, raw_value, raw_value.getClass().getSimpleName()));
                     log.error(String.format("input row is : %s",inputRow));
-                    return (WeightedSumUnique) raw_value;
+                    return (WeightedSum) raw_value;
                 }
                 else {
-                    WeightedSumUnique sum = new WeightedSumUnique(0);
+                    WeightedSum sum = new WeightedSum(0);
                     List<String> dimValues = inputRow.getDimension(metricName);
                     if (dimValues == null){
                         throw new IAE("raw value is null");
@@ -100,28 +100,28 @@ public class WeightedSumSerde extends ComplexMetricSerde {
      */
     @Override
     public ObjectStrategy getObjectStrategy() {
-        return new ObjectStrategy<WeightedSumUnique>() {
+        return new ObjectStrategy<WeightedSum>() {
             @Override
-            public Class<? extends WeightedSumUnique> getClazz() {
-                return WeightedSumUnique.class;
+            public Class<? extends WeightedSum> getClazz() {
+                return WeightedSum.class;
             }
 
             @Override
-            public WeightedSumUnique fromByteBuffer(ByteBuffer buffer, int numBytes) {
+            public WeightedSum fromByteBuffer(ByteBuffer buffer, int numBytes) {
                 final ByteBuffer readOnlyBuffer = buffer.asReadOnlyBuffer();
                 readOnlyBuffer.limit(readOnlyBuffer.position() + numBytes);
                 byte[] b = new byte[readOnlyBuffer.remaining()];
                 readOnlyBuffer.get(b);
-                return WeightedSumUnique.fromBytes(b);
+                return WeightedSum.fromBytes(b);
             }
 
             @Override
-            public byte[] toBytes(WeightedSumUnique val) {
+            public byte[] toBytes(WeightedSum val) {
                 return val.toBytes();
             }
 
             @Override
-            public int compare(WeightedSumUnique w1, WeightedSumUnique w2) {
+            public int compare(WeightedSum w1, WeightedSum w2) {
                 return comparator.compare(w1, w2);
             }
         };

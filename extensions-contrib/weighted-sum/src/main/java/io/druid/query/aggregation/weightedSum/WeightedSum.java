@@ -17,13 +17,13 @@
  * under the License.
  */
 
-package io.druid.query.aggregation.weightedHyperUnique;
+package io.druid.query.aggregation.weightedSum;
 
 import com.fasterxml.jackson.annotation.JsonValue;
 
 import java.nio.ByteBuffer;
 
-public class WeightedSumUnique {
+public class WeightedSum {
     Double value;
 
     @Override
@@ -35,7 +35,7 @@ public class WeightedSumUnique {
             return false;
         }
 
-        WeightedSumUnique that = (WeightedSumUnique) o;
+        WeightedSum that = (WeightedSum) o;
 
         if (Double.compare(that.value, value) != 0) {
             return false;
@@ -50,17 +50,17 @@ public class WeightedSumUnique {
     }
 
 
-    public WeightedSumUnique(double value) {
+    public WeightedSum(double value) {
         this.value = value;
     }
 
-    public WeightedSumUnique() {
+    public WeightedSum() {
         this(0);
     }
 
     @Override
     public String toString() {
-        return "WeightedSumUnique{" +
+        return "WeightedSum{" +
                 "value=" + value +
                 '}';
     }
@@ -74,7 +74,7 @@ public class WeightedSumUnique {
         this.value += value;
     }
 
-    public WeightedSumUnique fold(WeightedSumUnique h) {
+    public WeightedSum fold(WeightedSum h) {
         this.value += h.value;
         return this;
     }
@@ -95,8 +95,8 @@ public class WeightedSumUnique {
         buffer.putDouble(value);
     }
 
-    public static WeightedSumUnique fromByteBuf(ByteBuffer buffer){
-        return new WeightedSumUnique(buffer.getDouble());
+    public static WeightedSum fromByteBuf(ByteBuffer buffer){
+        return new WeightedSum(buffer.getDouble());
     }
 
 
@@ -123,7 +123,7 @@ public class WeightedSumUnique {
      * @param bytes byte array to construct an ApproximateHistogram from
      * @return ApproximateHistogram constructed from the given byte array
      */
-    public static WeightedSumUnique fromBytes(byte[] bytes) {
+    public static WeightedSum fromBytes(byte[] bytes) {
         return fromByteBuf(ByteBuffer.wrap(bytes));
     }
 

@@ -1,4 +1,4 @@
-package io.druid.query.aggregation.weightedHyperUnique;
+package io.druid.query.aggregation.weightedSum;
 
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.JsonMappingException;

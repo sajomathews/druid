@@ -1,4 +1,4 @@
-package io.druid.query.aggregation.weightedHyperUnique;
+package io.druid.query.aggregation.weightedSum;
 
 import com.fasterxml.jackson.annotation.JsonTypeName;
 import com.google.common.base.Preconditions;
@@ -23,7 +23,7 @@ import java.util.List;
 /**
  * Created by sajo on 2/8/16.
  */
-@JsonTypeName("weightedHyperUnique")
+@JsonTypeName("weightedSum")
 public class WeightedSumAggregatorFactory extends AggregatorFactory{
     private static final Logger log = new Logger(WeightedSumAggregatorFactory.class);
     private static final byte CACHE_TYPE_ID = 'Z';
@@ -54,7 +54,7 @@ public class WeightedSumAggregatorFactory extends AggregatorFactory{
         }
 
         final Class cls = selector.classOfObject();
-        if(cls.equals(Object.class) || WeightedSumUnique.class.isAssignableFrom(cls)){
+        if(cls.equals(Object.class) || WeightedSum.class.isAssignableFrom(cls)){
             return new WeightedSumAggregator(name, selector);
         }
         else if(cls.equals(Float.TYPE) || Float.TYPE.isAssignableFrom(cls)){
@@ -87,9 +87,9 @@ public class WeightedSumAggregatorFactory extends AggregatorFactory{
 
         final Class cls = selector.classOfObject();
 
-        if(cls.equals(WeightedSumUnique.class) || WeightedSumUnique.class.isAssignableFrom(cls)){
+        if(cls.equals(WeightedSum.class) || WeightedSum.class.isAssignableFrom(cls)){
             throw new IAE(
-                    "preaggregated WeightedSumUnique is not supported yet"
+                    "preaggregated WeightedSum is not supported yet"
             );
             //TODO: Should return a combining Aggregator here
         }
@@ -174,12 +174,12 @@ public class WeightedSumAggregatorFactory extends AggregatorFactory{
     @Override
     public Object deserialize(Object object) {
        if(object instanceof byte[]) {
-           final WeightedSumUnique w = WeightedSumUnique.fromBytes((byte[]) object);
+           final WeightedSum w = WeightedSum.fromBytes((byte[]) object);
            return w;
        }
        else {
            throw new IAE(
-                   "Don't know how to deserialze %s to WeightedSumUnique",
+                   "Don't know how to deserialze %s to WeightedSum",
                    object.getClass()
            );
        }
@@ -194,7 +194,7 @@ public class WeightedSumAggregatorFactory extends AggregatorFactory{
      */
     @Override
     public Object finalizeComputation(Object object) {
-        return ((WeightedSumUnique)(object)).getValue();
+        return ((WeightedSum)(object)).getValue();
     }
 
     @Override
@@ -221,7 +221,7 @@ public class WeightedSumAggregatorFactory extends AggregatorFactory{
 
     @Override
     public String getTypeName() {
-        return "weightedHyperUnique";
+        return "weightedSum";
     }
 
     /**

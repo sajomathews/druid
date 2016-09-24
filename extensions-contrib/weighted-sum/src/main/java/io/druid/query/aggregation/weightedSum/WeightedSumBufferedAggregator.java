@@ -1,4 +1,4 @@
-package io.druid.query.aggregation.weightedHyperUnique;
+package io.druid.query.aggregation.weightedSum;
 
 import io.druid.query.aggregation.BufferAggregator;
 import io.druid.segment.FloatColumnSelector;
@@ -23,7 +23,7 @@ public class WeightedSumBufferedAggregator implements BufferAggregator {
         ByteBuffer mutationBuffer = buf.duplicate();
         mutationBuffer.position(position);
 
-        WeightedSumUnique w = new WeightedSumUnique(0);
+        WeightedSum w = new WeightedSum(0);
         w.toByteBuf(mutationBuffer);
     }
 
@@ -43,7 +43,7 @@ public class WeightedSumBufferedAggregator implements BufferAggregator {
         ByteBuffer mutationBuffer = buf.duplicate();
         mutationBuffer.position(position);
 
-        WeightedSumUnique current = WeightedSumUnique.fromByteBuf(mutationBuffer.asReadOnlyBuffer());
+        WeightedSum current = WeightedSum.fromByteBuf(mutationBuffer.asReadOnlyBuffer());
         current.offer(weight * selector.get());
 
         mutationBuffer.position(position);
@@ -66,7 +66,7 @@ public class WeightedSumBufferedAggregator implements BufferAggregator {
         ByteBuffer mutationBuffer = buf.asReadOnlyBuffer();
         mutationBuffer.position(position);
 
-        return WeightedSumUnique.fromByteBuf(mutationBuffer);
+        return WeightedSum.fromByteBuf(mutationBuffer);
     }
 
     @Override
@@ -74,12 +74,13 @@ public class WeightedSumBufferedAggregator implements BufferAggregator {
         ByteBuffer mutationBuffer = buf.asReadOnlyBuffer();
         mutationBuffer.position(position);
 
-        return WeightedSumUnique.fromByteBuf(mutationBuffer).getValue();
+        return WeightedSum.fromByteBuf(mutationBuffer).getValue();
     }
 
     @Override
     public long getLong(ByteBuffer buf, int position) {
-        throw new UnsupportedOperationException("WeightedUniqueAggregator does not support getLong()");
+        throw new UnsupportedOperationException("WeightedSumAggregator does not support getLong()");
+        //TODO: Should support getLong()
     }
 
     /**

@@ -1,4 +1,4 @@
-package io.druid.query.aggregation.weightedHyperUnique;
+package io.druid.query.aggregation.weightedSum;
 
 import com.fasterxml.jackson.databind.Module;
 import com.fasterxml.jackson.databind.module.SimpleModule;
@@ -14,7 +14,7 @@ import java.util.List;
  */
 public class WeightedSumDruidModule implements DruidModule{
 
-    public static final String AGGREGATOR_TYPE = "weightedHyperUnique";
+    public static final String AGGREGATOR_TYPE = "weightedSum";
     @Override
     public List<? extends Module> getJacksonModules() {
         return ImmutableList.of(

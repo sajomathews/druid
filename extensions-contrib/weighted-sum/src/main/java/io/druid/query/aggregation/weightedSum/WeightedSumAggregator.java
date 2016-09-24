@@ -1,4 +1,4 @@
-package io.druid.query.aggregation.weightedHyperUnique;
+package io.druid.query.aggregation.weightedSum;
 
 import com.google.common.collect.Ordering;
 import com.google.common.primitives.Floats;
@@ -16,14 +16,14 @@ public class WeightedSumAggregator implements Aggregator {
     public static final Comparator COMPARATOR = new Ordering() {
         @Override
         public int compare(@Nullable Object o, @Nullable Object t1) {
-            return Floats.compare(((WeightedSumUnique) o).getValue(), ((WeightedSumUnique) t1).getValue());
+            return Floats.compare(((WeightedSum) o).getValue(), ((WeightedSum) t1).getValue());
         }
     };
 
     private final ObjectColumnSelector selector;
     private final String name;
 
-    private WeightedSumUnique sum;
+    private WeightedSum sum;
 
     public WeightedSumAggregator(String name, ObjectColumnSelector columnSelector) {
         this.name = name;
@@ -33,12 +33,12 @@ public class WeightedSumAggregator implements Aggregator {
 
     @Override
     public void aggregate() {
-        sum.fold((WeightedSumUnique)selector.get());
+        sum.fold((WeightedSum)selector.get());
     }
 
     @Override
     public void reset() {
-        sum = new WeightedSumUnique(0);
+        sum = new WeightedSum(0);
     }
 
     @Override
@@ -63,16 +63,18 @@ public class WeightedSumAggregator implements Aggregator {
 
     @Override
     public long getLong() {
-        throw new UnsupportedOperationException("Weighted Unique Aggregator does not support getLong()");
+        throw new UnsupportedOperationException("Weighted Sum does not support getLong()");
+        //TODO: This should support getLong
     }
 
-    public static WeightedSumUnique combine(Object lhs, Object rhs) {
-        if (lhs.getClass() != WeightedSumUnique.class || rhs.getClass() != WeightedSumUnique.class){
-            throw new UnsupportedOperationException("Can only combine weighted hyper uniques");
+    public static WeightedSum combine(Object lhs, Object rhs) {
+        if (lhs.getClass() != WeightedSum.class || rhs.getClass() != WeightedSum.class){
+            throw new UnsupportedOperationException("Can only combine weighted sums");
+            //TODO: Should be able to combine any long / float as well
         }
 
-        WeightedSumUnique w1 = (WeightedSumUnique)lhs;
-        WeightedSumUnique w2 = (WeightedSumUnique)rhs;
+        WeightedSum w1 = (WeightedSum)lhs;
+        WeightedSum w2 = (WeightedSum)rhs;
 
         return w1.fold(w2);
     }
