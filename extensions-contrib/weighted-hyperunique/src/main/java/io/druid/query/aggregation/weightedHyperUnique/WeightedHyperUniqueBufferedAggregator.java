@@ -1,6 +1,7 @@
 package io.druid.query.aggregation.weightedHyperUnique;
 
 import io.druid.query.aggregation.BufferAggregator;
+import io.druid.query.aggregation.hyperloglog.HyperLogLogCollector;
 import io.druid.segment.FloatColumnSelector;
 import io.druid.segment.ObjectColumnSelector;
 import io.druid.segment.column.FloatColumn;
@@ -12,21 +13,18 @@ import java.nio.ByteBuffer;
  */
 public class WeightedHyperUniqueBufferedAggregator implements BufferAggregator {
 
-    private final FloatColumnSelector selector;
-    private final Integer weight;
+    private static final byte[] EMPTY_BYTES = HyperLogLogCollector.makeEmptyVersionedByteArray();
+    private final ObjectColumnSelector selector;
 
-    public WeightedHyperUniqueBufferedAggregator(FloatColumnSelector objectColumnSelector, Integer weight) {
+    public WeightedHyperUniqueBufferedAggregator(ObjectColumnSelector objectColumnSelector) {
         this.selector = objectColumnSelector;
-        this.weight = weight;
     }
 
     @Override
     public void init(ByteBuffer buf, int position) {
         ByteBuffer mutationBuffer = buf.duplicate();
         mutationBuffer.position(position);
-
-        WeightedHyperUnique w = new WeightedHyperUnique(0);
-        w.toByteBuf(mutationBuffer);
+        mutationBuffer.put(EMPTY_BYTES);
     }
 
     /**
@@ -42,14 +40,18 @@ public class WeightedHyperUniqueBufferedAggregator implements BufferAggregator {
      */
     @Override
     public void aggregate(ByteBuffer buf, int position) {
-        ByteBuffer mutationBuffer = buf.duplicate();
-        mutationBuffer.position(position);
+        HyperLogLogCollector collector = (HyperLogLogCollector) selector.get();
 
-        WeightedHyperUnique current = WeightedHyperUnique.fromByteBuf(mutationBuffer.asReadOnlyBuffer());
-        current.offer(weight * selector.get());
+        if (collector == null) {
+            return;
+        }
 
-        mutationBuffer.position(position);
-        current.toByteBuf(mutationBuffer);
+        HyperLogLogCollector.makeCollector(
+                (ByteBuffer) buf.duplicate().position(position).limit(
+                        position
+                                + HyperLogLogCollector.getLatestNumBytesForDenseStorage()
+                )
+        ).fold(collector);
     }
 
     /**
@@ -65,23 +67,24 @@ public class WeightedHyperUniqueBufferedAggregator implements BufferAggregator {
      */
     @Override
     public Object get(ByteBuffer buf, int position) {
-        ByteBuffer mutationBuffer = buf.asReadOnlyBuffer();
+        final int size = HyperLogLogCollector.getLatestNumBytesForDenseStorage();
+        ByteBuffer dataCopyBuffer = ByteBuffer.allocate(size);
+        ByteBuffer mutationBuffer = buf.duplicate();
         mutationBuffer.position(position);
-
-        return WeightedHyperUnique.fromByteBuf(mutationBuffer);
+        mutationBuffer.limit(position + size);
+        dataCopyBuffer.put(mutationBuffer);
+        dataCopyBuffer.rewind();
+        return HyperLogLogCollector.makeCollector(dataCopyBuffer);
     }
 
     @Override
     public float getFloat(ByteBuffer buf, int position) {
-        ByteBuffer mutationBuffer = buf.asReadOnlyBuffer();
-        mutationBuffer.position(position);
-
-        return WeightedHyperUnique.fromByteBuf(mutationBuffer).getValue();
+        throw new UnsupportedOperationException("HyperUniquesBufferAggregator does not support getFloat()");
     }
 
     @Override
     public long getLong(ByteBuffer buf, int position) {
-        throw new UnsupportedOperationException("WeightedUniqueAggregator does not support getLong()");
+        throw new UnsupportedOperationException("HyperUniquesBufferAggregator does not support getLong()");
     }
 
     /**

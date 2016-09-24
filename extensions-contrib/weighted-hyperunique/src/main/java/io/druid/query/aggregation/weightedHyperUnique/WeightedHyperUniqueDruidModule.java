@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.Module;
 import com.fasterxml.jackson.databind.jsontype.NamedType;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.google.common.collect.ImmutableList;
+import com.google.common.hash.Hashing;
 import com.google.inject.Binder;
 import io.druid.initialization.DruidModule;
 import io.druid.segment.serde.ComplexMetrics;
@@ -28,7 +29,7 @@ public class WeightedHyperUniqueDruidModule implements DruidModule{
     @Override
     public void configure(Binder binder) {
         if (ComplexMetrics.getSerdeForType(AGGREGATOR_TYPE) == null) {
-            ComplexMetrics.registerSerde(AGGREGATOR_TYPE, new WeightedHyperUniqueSerde());
+            ComplexMetrics.registerSerde(AGGREGATOR_TYPE, new WeightedHyperUniqueSerde(Hashing.murmur3_128()));
         }
 
     }

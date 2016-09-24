@@ -1,9 +1,13 @@
 package io.druid.query.aggregation.weightedHyperUnique;
 
 import com.google.common.collect.Ordering;
+import com.google.common.hash.HashFunction;
+
 import com.metamx.common.IAE;
+import com.metamx.common.StringUtils;
 import com.metamx.common.logger.Logger;
 import io.druid.data.input.InputRow;
+import io.druid.query.aggregation.hyperloglog.HyperLogLogCollector;
 import io.druid.segment.column.ColumnBuilder;
 import io.druid.segment.column.GenericColumn;
 import io.druid.segment.data.GenericIndexed;
@@ -22,12 +26,23 @@ import java.util.List;
 
 public class WeightedHyperUniqueSerde extends ComplexMetricSerde {
 
-    private static Ordering<WeightedHyperUnique> comparator = new Ordering<WeightedHyperUnique>() {
+    private static Ordering<HyperLogLogCollector> comparator = new Ordering<HyperLogLogCollector>()
+    {
         @Override
-        public int compare(@Nullable WeightedHyperUnique w1, @Nullable WeightedHyperUnique t1) {
-            return WeightedHyperUniqueAggregator.COMPARATOR.compare(w1, t1);
+        public int compare(
+                HyperLogLogCollector arg1, HyperLogLogCollector arg2
+        )
+        {
+            return arg1.toByteBuffer().compareTo(arg2.toByteBuffer());
         }
-    };
+    }.nullsFirst();
+
+    private final HashFunction hashFn;
+
+    public WeightedHyperUniqueSerde(HashFunction hashFn) {
+        this.hashFn = hashFn;
+    }
+
     @Override
     public String getTypeName() {
         return "weightedHyperUnique";
@@ -38,52 +53,47 @@ public class WeightedHyperUniqueSerde extends ComplexMetricSerde {
      * Deserializes a ByteBuffer and adds it to the ColumnBuilder.  This method allows for the ComplexMetricSerde
      * to implement it's own versioning scheme to allow for changes of binary format in a forward-compatible manner.
      *
-     * @param buffer  the buffer to deserialize
-     * @param builder ColumnBuilder to add the column to
+     * @param byteBuffer  the buffer to deserialize
+     * @param columnBuilder ColumnBuilder to add the column to
      */
     @Override
-    public void deserializeColumn(ByteBuffer buffer, ColumnBuilder builder) {
-        final GenericIndexed column = GenericIndexed.read(buffer, getObjectStrategy());
-        builder.setComplexColumn(new ComplexColumnPartSupplier(getTypeName(), column));
+    public void deserializeColumn(ByteBuffer byteBuffer, ColumnBuilder columnBuilder) {
+        final GenericIndexed column = GenericIndexed.read(byteBuffer, getObjectStrategy());
+        columnBuilder.setComplexColumn(new ComplexColumnPartSupplier(getTypeName(), column));
 
     }
 
     @Override
     public ComplexMetricExtractor getExtractor(){
-        return new ComplexMetricExtractor() {
-
-            private final Logger log = new Logger("io.druid.initialization.Initialization");
+        return new ComplexMetricExtractor()
+        {
             @Override
-            public Class<WeightedHyperUnique> extractedClass() {
-                return WeightedHyperUnique.class;
+            public Class<HyperLogLogCollector> extractedClass()
+            {
+                return HyperLogLogCollector.class;
             }
 
             @Override
-            public Object extractValue(InputRow inputRow, String metricName) {
-                Object raw_value = inputRow.getRaw(metricName);
+            public HyperLogLogCollector extractValue(InputRow inputRow, String metricName)
+            {
+                Object rawValue = inputRow.getRaw(metricName);
 
-                log.error(String.format("input row outside is : %s",inputRow));
+                if (rawValue instanceof HyperLogLogCollector) {
+                    return (HyperLogLogCollector) rawValue;
+                } else {
+                    HyperLogLogCollector collector = HyperLogLogCollector.makeLatestCollector();
 
-                if (raw_value instanceof WeightedHyperUnique){
-                    log.error(String.format("logged raw value is weighted hyper unique, Metric: %s, Raw Value: %s, Class: %s", metricName, raw_value, raw_value.getClass().getSimpleName()));
-                    log.error(String.format("input row is : %s",inputRow));
-                    return (WeightedHyperUnique) raw_value;
-                }
-                else {
-                    WeightedHyperUnique sum = new WeightedHyperUnique(0);
                     List<String> dimValues = inputRow.getDimension(metricName);
-                    if (dimValues == null){
-                        throw new IAE("raw value is null");
-                        //return sum;
+                    if (dimValues == null) {
+                        return collector;
                     }
-                    else {
-                        log.error("Getting raw values");
-                        for (String value: dimValues){
-                            WeightedDuration duration = WeightedDuration.fromPackedIntegerString(value);
-                            sum.offer((float) (duration.getWeight() * duration.getDuration()));
-                        }
-                        return sum;
+
+                    for (String dimensionValue : dimValues) {
+                        collector.add(
+                                hashFn.hashBytes(StringUtils.toUtf8(dimensionValue)).asBytes()
+                        );
                     }
+                    return collector;
                 }
             }
         };
@@ -101,29 +111,38 @@ public class WeightedHyperUniqueSerde extends ComplexMetricSerde {
      */
     @Override
     public ObjectStrategy getObjectStrategy() {
-        return new ObjectStrategy<WeightedHyperUnique>() {
+        return new ObjectStrategy<HyperLogLogCollector>()
+        {
             @Override
-            public Class<? extends WeightedHyperUnique> getClazz() {
-                return WeightedHyperUnique.class;
+            public Class<? extends HyperLogLogCollector> getClazz()
+            {
+                return HyperLogLogCollector.class;
             }
 
             @Override
-            public WeightedHyperUnique fromByteBuffer(ByteBuffer buffer, int numBytes) {
+            public HyperLogLogCollector fromByteBuffer(ByteBuffer buffer, int numBytes)
+            {
                 final ByteBuffer readOnlyBuffer = buffer.asReadOnlyBuffer();
                 readOnlyBuffer.limit(readOnlyBuffer.position() + numBytes);
-                byte[] b = new byte[readOnlyBuffer.remaining()];
-                readOnlyBuffer.get(b);
-                return WeightedHyperUnique.fromBytes(b);
+                return HyperLogLogCollector.makeCollector(readOnlyBuffer);
             }
 
             @Override
-            public byte[] toBytes(WeightedHyperUnique val) {
-                return val.toBytes();
+            public byte[] toBytes(HyperLogLogCollector collector)
+            {
+                if (collector == null) {
+                    return new byte[]{};
+                }
+                ByteBuffer val = collector.toByteBuffer();
+                byte[] retVal = new byte[val.remaining()];
+                val.asReadOnlyBuffer().get(retVal);
+                return retVal;
             }
 
             @Override
-            public int compare(WeightedHyperUnique w1, WeightedHyperUnique w2) {
-                return comparator.compare(w1, w2);
+            public int compare(HyperLogLogCollector o1, HyperLogLogCollector o2)
+            {
+                return comparator.compare(o1, o2);
             }
         };
     }
